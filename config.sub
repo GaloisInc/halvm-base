@@ -1344,6 +1344,9 @@ case $os in
 	-zvmoe)
 		os=-zvmoe
 		;;
+	-HaLVM)
+		os=-HaLVM
+		;;
 	-none)
 		;;
 	*)
