@@ -171,6 +171,11 @@ module System.IO (
     openTempFileWithDefaultPermissions,
     openBinaryTempFileWithDefaultPermissions,
 
+#if defined(HaLVM_TARGET_OS)
+    setXenPutStr,
+    setXenGetChar,
+#endif
+
 #if !defined(__HUGS__)
     -- * Unicode encoding\/decoding
 
@@ -269,23 +274,62 @@ import System.IO.Unsafe ( unsafeInterleaveIO )
 -- -----------------------------------------------------------------------------
 -- Standard IO
 
+#ifdef HaLVM_TARGET_OS
+import System.IO.Unsafe(unsafePerformIO)
+
+data XenIO = XenIO {
+    xenPutStr  :: String -> IO ()
+  , xenGetChar :: IO Char
+  }
+
+{-# NOINLINE xenOps #-}
+xenOps :: IORef XenIO
+xenOps  = unsafePerformIO $ newIORef XenIO {
+    xenPutStr  = \ _ -> return ()
+  , xenGetChar = fail "System.IO.xenGetChar not set in xenOps!"
+  }
+
+withXenOp :: (XenIO -> f) -> IO f
+withXenOp p = do
+  ops <- readIORef xenOps
+  return (p ops)
+
+setXenPutStr :: (String -> IO ()) -> IO ()
+setXenPutStr f = atomicModifyIORef xenOps (\ ops -> ops{ xenPutStr = f }, ())
+
+setXenGetChar :: IO Char -> IO ()
+setXenGetChar f = atomicModifyIORef xenOps (\ ops -> ops{ xenGetChar = f }, ())
+#endif
+
 #ifdef __GLASGOW_HASKELL__
 -- | Write a character to the standard output device
 -- (same as 'hPutChar' 'stdout').
 
 putChar         :: Char -> IO ()
+#ifdef HaLVM_TARGET_OS
+putChar c       =  withXenOp xenPutStr >>= \ f -> f [c]
+#else
 putChar c       =  hPutChar stdout c
+#endif
 
 -- | Write a string to the standard output device
 -- (same as 'hPutStr' 'stdout').
 
 putStr          :: String -> IO ()
+#ifdef HaLVM_TARGET_OS
+putStr s        =  withXenOp xenPutStr >>= \f -> f s
+#else
 putStr s        =  hPutStr stdout s
+#endif
 
 -- | The same as 'putStr', but adds a newline character.
 
 putStrLn        :: String -> IO ()
+#ifdef HaLVM_TARGET_OS
+putStrLn s      =  withXenOp xenPutStr >>= (\f -> (f s >> f "\n"))
+#else
 putStrLn s      =  hPutStrLn stdout s
+#endif
 
 -- | The 'print' function outputs a value of any printable type to the
 -- standard output device.
@@ -305,20 +349,40 @@ print x         =  putStrLn (show x)
 -- (same as 'hGetChar' 'stdin').
 
 getChar         :: IO Char
+#ifdef HaLVM_TARGET_OS
+getChar         =  withXenOp xenGetChar
+#else
 getChar         =  hGetChar stdin
+#endif
 
 -- | Read a line from the standard input device
 -- (same as 'hGetLine' 'stdin').
 
 getLine         :: IO String
+#ifdef HaLVM_TARGET_OS
+getLine         =  do get <- withXenOp xenGetChar
+                      let loop = get >>= \ c -> case c of
+                            '\n' -> return []
+                            _    -> (c:) `fmap` loop
+                      loop
+#else
 getLine         =  hGetLine stdin
+#endif
 
 -- | The 'getContents' operation returns all user input as a single string,
 -- which is read lazily as it is needed
 -- (same as 'hGetContents' 'stdin').
 
 getContents     :: IO String
+#ifdef HaLVM_TARGET_OS
+getContents     =  do get <-- withXenOp xenGetChar
+                      let loop = do c    <- get
+                                    rest <- loop
+                                    return (c:rest)
+                      loop
+#else
 getContents     =  hGetContents stdin
+#endif
 
 -- | The 'interact' function takes a function of type @String->String@
 -- as its argument.  The entire input from the standard input device is
