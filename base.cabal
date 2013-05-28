@@ -230,6 +230,9 @@ Library {
         cbits/sysconf.c
     include-dirs: include
     includes:    HsBase.h
+    if os(HaLVM) {
+        include-dirs: include/rts
+    }
     install-includes:    HsBase.h HsBaseConfig.h EventConfig.h WCsubst.h consUtils.h Typeable.h OldTypeable.h
     if os(windows) {
         extra-libraries: wsock32, user32, shell32
