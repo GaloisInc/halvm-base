@@ -232,6 +232,7 @@ Library {
     includes:    HsBase.h
     if os(HaLVM) {
         include-dirs: include/rts
+        cpp-options: -DHaLVM_TARGET_OS
     }
     install-includes:    HsBase.h HsBaseConfig.h EventConfig.h WCsubst.h consUtils.h Typeable.h OldTypeable.h
     if os(windows) {

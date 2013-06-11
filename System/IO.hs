@@ -275,6 +275,7 @@ import System.IO.Unsafe ( unsafeInterleaveIO )
 -- Standard IO
 
 #ifdef HaLVM_TARGET_OS
+import GHC.IORef
 import System.IO.Unsafe(unsafePerformIO)
 
 data XenIO = XenIO {
@@ -295,10 +296,12 @@ withXenOp p = do
   return (p ops)
 
 setXenPutStr :: (String -> IO ()) -> IO ()
-setXenPutStr f = atomicModifyIORef xenOps (\ ops -> ops{ xenPutStr = f }, ())
+setXenPutStr f = atomicModifyIORef xenOps
+  (\ ops -> (ops{ xenPutStr = f }, ()))
 
 setXenGetChar :: IO Char -> IO ()
-setXenGetChar f = atomicModifyIORef xenOps (\ ops -> ops{ xenGetChar = f }, ())
+setXenGetChar f = atomicModifyIORef xenOps
+  (\ ops -> (ops{ xenGetChar = f }, ()))
 #endif
 
 #ifdef __GLASGOW_HASKELL__
@@ -350,7 +353,7 @@ print x         =  putStrLn (show x)
 
 getChar         :: IO Char
 #ifdef HaLVM_TARGET_OS
-getChar         =  withXenOp xenGetChar
+getChar         =  withXenOp xenGetChar >>= id
 #else
 getChar         =  hGetChar stdin
 #endif
@@ -375,7 +378,7 @@ getLine         =  hGetLine stdin
 
 getContents     :: IO String
 #ifdef HaLVM_TARGET_OS
-getContents     =  do get <-- withXenOp xenGetChar
+getContents     =  do get <- withXenOp xenGetChar
                       let loop = do c    <- get
                                     rest <- loop
                                     return (c:rest)
