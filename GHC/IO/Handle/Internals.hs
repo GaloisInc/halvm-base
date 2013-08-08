@@ -57,6 +57,7 @@ module GHC.IO.Handle.Internals (
 import GHC.IO
 import GHC.IO.IOMode
 import GHC.IO.Encoding as Encoding
+import GHC.IO.Encoding.Types (CodeBuffer)
 import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO (BufferedIO)
@@ -370,16 +371,26 @@ ioe_bufsiz n = ioException
 streamEncode :: BufferCodec from to state
              -> Buffer from -> Buffer to
              -> IO (Buffer from, Buffer to)
-streamEncode codec from to = go (from, to)
-  where 
-    go (from, to) = do
+streamEncode codec from to = fmap (\(_, from', to') -> (from', to')) $ recoveringEncode codec from to
+
+-- | Just like 'encode', but interleaves calls to 'encode' with calls to 'recover' in order to make as much progress as possible
+recoveringEncode :: BufferCodec from to state -> CodeBuffer from to
+recoveringEncode codec from to = go from to
+  where
+    go from to = do
       (why, from', to') <- encode codec from to
       -- When we are dealing with Handles, we don't care about input/output
       -- underflow particularly, and we want to delay errors about invalid
       -- sequences as far as possible.
       case why of
-        Encoding.InvalidSequence | bufL from == bufL from' -> recover codec from' to' >>= go
-        _ -> return (from', to')
+        InvalidSequence | bufL from == bufL from' -> do
+          -- NB: it is OK to call recover here. Because we saw InvalidSequence, by the invariants
+          -- on "encode" it must be the case that there is at least one elements available in the output
+          -- buffer. Furthermore, clearly there is at least one element in the input buffer since we found
+          -- something invalid there!
+          (from', to') <- recover codec from' to'
+          go from' to'
+        _ -> return (why, from', to')
 
 -- -----------------------------------------------------------------------------
 -- Handle Finalizers
@@ -802,6 +813,16 @@ debugIO s
 -- Read characters into the provided buffer.  Return when any
 -- characters are available; raise an exception if the end of 
 -- file is reached.
+--
+-- In uses of readTextDevice within base, the input buffer is either:
+--   * empty
+--   * or contains a single \r (when doing newline translation)
+--
+-- The input character buffer must have a capacity at least 1 greater
+-- than the number of elements it currently contains.
+--
+-- Users of this function expect that the buffer returned contains
+-- at least 1 more character than the input buffer.
 readTextDevice :: Handle__ -> CharBuffer -> IO CharBuffer
 readTextDevice h_@Handle__{..} cbuf = do
   --
@@ -832,9 +853,13 @@ readTextDevice h_@Handle__{..} cbuf = do
   debugIO ("readTextDevice after decoding: cbuf=" ++ summaryBuffer cbuf' ++ 
         " bbuf=" ++ summaryBuffer bbuf2)
 
+  -- We can't return from readTextDevice without reading at least a single extra character,
+  -- so check that we have managed to achieve that
   writeIORef haByteBuffer bbuf2
-  if bufR cbuf' == bufR cbuf -- no new characters
-     then readTextDevice' h_ bbuf2 cbuf -- we need more bytes to make a Char
+  if bufR cbuf' == bufR cbuf
+     -- we need more bytes to make a Char. NB: bbuf2 may be empty (even though bbuf1 wasn't) when we
+     -- are using an encoding that can skip bytes without outputting characters, such as UTF8//IGNORE
+     then readTextDevice' h_ bbuf2 cbuf
      else return cbuf'
 
 -- we have an incomplete byte sequence at the end of the buffer: try to
@@ -853,7 +878,11 @@ readTextDevice' h_@Handle__{..} bbuf0 cbuf0 = do
   (r,bbuf2) <- Buffered.fillReadBuffer haDevice bbuf1
   if r == 0
    then do
+     -- bbuf2 can be empty here when we encounter an invalid byte sequence at the end of the input
+     -- with a //IGNORE codec which consumes bytes without outputting characters
+     if isEmptyBuffer bbuf2 then ioe_EOF else do
      (bbuf3, cbuf1) <- recover decoder bbuf2 cbuf0
+     debugIO ("readTextDevice' after recovery: bbuf=" ++ summaryBuffer bbuf3 ++ ", cbuf=" ++ summaryBuffer cbuf1)
      writeIORef haByteBuffer bbuf3
      -- We should recursively invoke readTextDevice after recovery,
      -- if recovery did not add at least one new character to the buffer:

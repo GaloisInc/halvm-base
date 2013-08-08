@@ -20,7 +20,7 @@ module GHC.IO.Encoding.Types (
     BufferCodec(..),
     TextEncoding(..),
     TextEncoder, TextDecoder,
-    EncodeBuffer, DecodeBuffer,
+    CodeBuffer, EncodeBuffer, DecodeBuffer,
     CodingProgress(..)
   ) where
 
@@ -34,24 +34,21 @@ import GHC.IO.Buffer
 -- Text encoders/decoders
 
 data BufferCodec from to state = BufferCodec {
-  encode :: Buffer from -> Buffer to -> IO (CodingProgress, Buffer from, Buffer to),
+  encode :: CodeBuffer from to,
    -- ^ The @encode@ function translates elements of the buffer @from@
    -- to the buffer @to@.  It should translate as many elements as possible
    -- given the sizes of the buffers, including translating zero elements
    -- if there is either not enough room in @to@, or @from@ does not
    -- contain a complete multibyte sequence.
    --
+   -- If multiple CodingProgress returns are possible, OutputUnderflow must be
+   -- preferred to InvalidSequence. This allows GHC's IO library to assume that
+   -- if we observe InvalidSequence there is at least a single element available
+   -- in the output buffer.
+   --
    -- The fact that as many elements as possible are translated is used by the IO
    -- library in order to report translation errors at the point they
    -- actually occur, rather than when the buffer is translated.
-   --
-   -- To allow us to use iconv as a BufferCode efficiently, character buffers are
-   -- defined to contain lone surrogates instead of those private use characters that
-   -- are used for roundtripping. Thus, Chars poked and peeked from a character buffer
-   -- must undergo surrogatifyRoundtripCharacter and desurrogatifyRoundtripCharacter
-   -- respectively.
-   --
-   -- For more information on this, see Note [Roundtripping] in GHC.IO.Encoding.Failure.
   
   recover :: Buffer from -> Buffer to -> IO (Buffer from, Buffer to),
    -- ^ The @recover@ function is used to continue decoding
@@ -93,11 +90,9 @@ data BufferCodec from to state = BufferCodec {
    -- call to 'getState'.
  }
 
-type DecodeBuffer = Buffer Word8 -> Buffer Char
-                  -> IO (CodingProgress, Buffer Word8, Buffer Char)
-
-type EncodeBuffer = Buffer Char -> Buffer Word8
-                  -> IO (CodingProgress, Buffer Char, Buffer Word8)
+type CodeBuffer from to = Buffer from -> Buffer to -> IO (CodingProgress, Buffer from, Buffer to)
+type DecodeBuffer = CodeBuffer Word8 Char
+type EncodeBuffer = CodeBuffer Char Word8
 
 type TextDecoder state = BufferCodec Word8 CharBufElem state
 type TextEncoder state = BufferCodec CharBufElem Word8 state

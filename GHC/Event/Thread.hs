@@ -103,8 +103,7 @@ closeFdWith close fd = do
                       (\mgr table -> M.closeFd_ mgr table fd)
                       mgrs
                       tables
-    close fd
-    zipWithM_ finish mgrs tableAndCbApps
+    close fd `finally` zipWithM_ finish mgrs tableAndCbApps
   where
     finish mgr (table', cbApp) = do
       putMVar (M.callbackTableVar mgr fd) table'
@@ -340,7 +339,7 @@ ioManagerCapabilitiesChanged = do
 
               -- create new IO managers for the new caps:
               forM_ [old_n_caps..new_n_caps-1] $
-                startIOManagerThread eventManagerArray
+                startIOManagerThread new_eventManagerArray
 
               -- update the event manager array reference:
               writeIORef eventManager new_eventManagerArray

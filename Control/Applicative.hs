@@ -54,6 +54,7 @@ import Control.Monad.ST.Safe (ST)
 import qualified Control.Monad.ST.Lazy.Safe as Lazy (ST)
 import Data.Functor ((<$>), (<$))
 import Data.Monoid (Monoid(..))
+import Data.Proxy
 
 import Text.ParserCombinators.ReadP (ReadP)
 import Text.ParserCombinators.ReadPrec (ReadPrec)
@@ -268,7 +269,7 @@ instance (ArrowZero a, ArrowPlus a) => Alternative (WrappedArrow a b) where
 --
 -- @f '<$>' 'ZipList' xs1 '<*>' ... '<*>' 'ZipList' xsn = 'ZipList' (zipWithn f xs1 ... xsn)@
 --
-newtype ZipList a = ZipList { getZipList :: [a] }
+newtype ZipList a = ZipList { getZipList :: [a] } deriving (Show, Eq, Ord, Read)
 
 instance Functor ZipList where
     fmap f (ZipList xs) = ZipList (map f xs)
@@ -276,6 +277,12 @@ instance Functor ZipList where
 instance Applicative ZipList where
     pure x = ZipList (repeat x)
     ZipList fs <*> ZipList xs = ZipList (zipWith id fs xs)
+
+instance Applicative Proxy where
+    pure _ = Proxy
+    {-# INLINE pure #-}
+    _ <*> _ = Proxy
+    {-# INLINE (<*>) #-}
 
 -- extra functions
 
