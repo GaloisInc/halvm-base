@@ -382,30 +382,46 @@ instance Enum Word where
 instance  Real Integer  where
     toRational x        =  x :% 1
 
+-- Note [Integer division constant folding]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--
+-- Constant folding of quot, rem, div, mod, divMod and quotRem for
+-- Integer arguments depends crucially on inlining. Constant folding
+-- rules defined in compiler/prelude/PrelRules.lhs trigger for
+-- quotInteger, remInteger and so on. So if calls to quot, rem and so on
+-- were not inlined the rules would not fire. The rules would also not
+-- fire if calls to quotInteger and so on were inlined, but this does not
+-- happen because they are all marked with NOINLINE pragma - see documentation
+-- of integer-gmp or integer-simple.
+
 instance  Integral Integer where
     toInteger n      = n
 
+    {-# INLINE quot #-}
     _ `quot` 0 = divZeroError
     n `quot` d = n `quotInteger` d
 
+    {-# INLINE rem #-}
     _ `rem` 0 = divZeroError
-    n `rem`  d = n `remInteger`  d
+    n `rem` d = n `remInteger` d
 
+    {-# INLINE div #-}
     _ `div` 0 = divZeroError
     n `div` d = n `divInteger` d
 
+    {-# INLINE mod #-}
     _ `mod` 0 = divZeroError
-    n `mod`  d = n `modInteger`  d
+    n `mod` d = n `modInteger` d
 
+    {-# INLINE divMod #-}
     _ `divMod` 0 = divZeroError
-    a `divMod` b = case a `divModInteger` b of
-                   (# x, y #) -> (x, y)
+    n `divMod` d = case n `divModInteger` d of
+                     (# x, y #) -> (x, y)
 
+    {-# INLINE quotRem #-}
     _ `quotRem` 0 = divZeroError
-    a `quotRem` b = case a `quotRemInteger` b of
-                    (# q, r #) -> (q, r)
-
-    -- use the defaults for div & mod
+    n `quotRem` d = case n `quotRemInteger` d of
+                      (# q, r #) -> (q, r)
 \end{code}
 
 
