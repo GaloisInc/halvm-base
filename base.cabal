@@ -242,7 +242,11 @@ Library {
     if os(windows) {
         extra-libraries: wsock32, user32, shell32
     }
-    if !os(windows) {
+    if os(HaLVM) {
+        other-modules:
+          GHC.Event.NoIO
+    }
+    if !os(windows) && !os(HaLVM) {
         exposed-modules:
             GHC.Event
         other-modules:

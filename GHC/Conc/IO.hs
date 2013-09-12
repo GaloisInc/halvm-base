@@ -68,6 +68,8 @@ import qualified GHC.Conc.Windows as Windows
 import GHC.Conc.Windows (asyncRead, asyncWrite, asyncDoProc, asyncReadBA,
                          asyncWriteBA, ConsoleEvent(..), win32ConsoleHandler,
                          toWin32ConsoleEvent)
+#elif HaLVM_TARGET_OS
+import qualified GHC.Event.NoIO as Event
 #else
 import qualified GHC.Event.Thread as Event
 #endif
@@ -94,7 +96,7 @@ ioManagerCapabilitiesChanged = return ()
 -- that has been used with 'threadWaitRead', use 'closeFdWith'.
 threadWaitRead :: Fd -> IO ()
 threadWaitRead fd
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
   | threaded  = Event.threadWaitRead fd
 #endif
   | otherwise = IO $ \s ->
@@ -110,7 +112,7 @@ threadWaitRead fd
 -- that has been used with 'threadWaitWrite', use 'closeFdWith'.
 threadWaitWrite :: Fd -> IO ()
 threadWaitWrite fd
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
   | threaded  = Event.threadWaitWrite fd
 #endif
   | otherwise = IO $ \s ->
@@ -124,7 +126,7 @@ threadWaitWrite fd
 -- in the file descriptor.
 threadWaitReadSTM :: Fd -> IO (Sync.STM (), IO ())
 threadWaitReadSTM fd 
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
   | threaded  = Event.threadWaitReadSTM fd
 #endif
   | otherwise = do
@@ -143,7 +145,7 @@ threadWaitReadSTM fd
 -- in the file descriptor.
 threadWaitWriteSTM :: Fd -> IO (Sync.STM (), IO ())
 threadWaitWriteSTM fd 
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
   | threaded  = Event.threadWaitWriteSTM fd
 #endif
   | otherwise = do
@@ -168,7 +170,7 @@ closeFdWith :: (Fd -> IO ()) -- ^ Low-level action that performs the real close.
             -> Fd            -- ^ File descriptor to close.
             -> IO ()
 closeFdWith close fd
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
   | threaded  = Event.closeFdWith close fd
 #endif
   | otherwise = close fd
