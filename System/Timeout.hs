@@ -24,7 +24,7 @@
 
 module System.Timeout ( timeout ) where
 
-#ifdef __GLASGOW_HASKELL__
+#if !defined(__GLASGOW_HASKELL__) && !defined(HaLVM_TARGET_OS)
 #ifndef mingw32_HOST_OS
 import Control.Monad
 import GHC.Event           (getSystemTimerManager,
@@ -90,7 +90,7 @@ timeout :: Int -> IO a -> IO (Maybe a)
 timeout n f
     | n <  0    = fmap Just f
     | n == 0    = return Nothing
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
     | rtsSupportsBoundThreads = do
         -- In the threaded RTS, we use the Timer Manager to delay the
         -- (fairly expensive) 'forkIO' call until the timeout has expired.
