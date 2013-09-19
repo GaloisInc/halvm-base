@@ -1,5 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE CPP, NoImplicitPrelude, UnboxedTuples, MagicHash #-}
+{-# LANGUAGE NoImplicitPrelude, UnboxedTuples, MagicHash #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -141,33 +141,18 @@ module Control.Concurrent.MVar
         , modifyMVar
         , modifyMVarMasked_
         , modifyMVarMasked
-#ifndef __HUGS__
         , tryReadMVar
         , mkWeakMVar
         , addMVarFinalizer
-#endif
     ) where
 
-#ifdef __HUGS__
-import Hugs.ConcBase ( MVar, newEmptyMVar, newMVar, takeMVar, putMVar,
-                  tryTakeMVar, tryPutMVar, isEmptyMVar,
-                )
-#endif
-
-#ifdef __GLASGOW_HASKELL__
 import GHC.MVar ( MVar(..), newEmptyMVar, newMVar, takeMVar, putMVar,
                   tryTakeMVar, tryPutMVar, isEmptyMVar, readMVar,
                   tryReadMVar
                 )
 import qualified GHC.MVar
 import GHC.Weak
-#endif
-
-#ifdef __GLASGOW_HASKELL__
 import GHC.Base
-#else
-import Prelude
-#endif
 
 import Control.Exception.Base
 

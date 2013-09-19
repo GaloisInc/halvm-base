@@ -96,26 +96,11 @@ import Foreign.C.String
 import Control.Monad            ( void )
 import Data.Maybe
 
-#if __GLASGOW_HASKELL__
 import GHC.IO
 import GHC.IO.Exception
 import GHC.IO.Handle.Types
 import GHC.Num
 import GHC.Base
-#elif __HUGS__
-import Hugs.Prelude             ( Handle, IOError, ioError )
-import System.IO.Unsafe         ( unsafePerformIO )
-#else
-import System.IO                ( Handle )
-import System.IO.Error          ( IOError, ioError )
-import System.IO.Unsafe         ( unsafePerformIO )
-import Foreign.Storable         ( Storable(poke,peek) )
-#endif
-
-#ifdef __HUGS__
-{-# CFILES cbits/PrelIOUtils.c #-}
-#endif
-
 
 -- "errno" type
 -- ------------
@@ -480,7 +465,6 @@ errnoToIOError  :: String       -- ^ the location where the error occurred
                 -> IOError
 errnoToIOError loc errno maybeHdl maybeName = unsafePerformIO $ do
     str <- strerror errno >>= peekCString
-#if __GLASGOW_HASKELL__
     return (IOError maybeHdl errType loc str (Just errno') maybeName)
     where
     Errno errno' = errno
@@ -585,9 +569,6 @@ errnoToIOError loc errno maybeHdl maybeName = unsafePerformIO $ do
         | errno == eWOULDBLOCK     = OtherError
         | errno == eXDEV           = UnsupportedOperation
         | otherwise                = OtherError
-#else
-    return (userError (loc ++ ": " ++ str ++ maybe "" (": "++) maybeName))
-#endif
 
 foreign import ccall unsafe "string.h" strerror :: Errno -> IO (Ptr CChar)
 

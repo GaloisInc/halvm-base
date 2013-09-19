@@ -95,24 +95,10 @@ import Data.OldTypeable.Internal hiding (mkTyCon)
 import Unsafe.Coerce
 import Data.Maybe
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Base
 
 import GHC.Fingerprint.Type
 import GHC.Fingerprint
-
-#endif
-
-#ifdef __HUGS__
-import Hugs.Prelude     ( Key(..), TypeRep(..), TyCon(..), Ratio,
-                          Handle, Ptr, FunPtr, ForeignPtr, StablePtr )
-import Hugs.IORef       ( IORef, newIORef, readIORef, writeIORef )
-import Hugs.IOExts      ( unsafePerformIO )
-        -- For the Typeable instance
-import Hugs.Array       ( Array )
-import Hugs.IOArray
-import Hugs.ConcBase    ( MVar )
-#endif
 
 #include "OldTypeable.h"
 

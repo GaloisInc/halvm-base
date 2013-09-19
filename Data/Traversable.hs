@@ -1,5 +1,4 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -58,11 +57,7 @@ import Data.Foldable (Foldable())
 import Data.Monoid (Monoid)
 import Data.Proxy
 
-#if defined(__GLASGOW_HASKELL__)
 import GHC.Arr
-#elif defined(__HUGS__)
-import Hugs.Array
-#endif
 
 -- | Functors representing data structures that can be traversed from
 -- left to right.
@@ -169,6 +164,7 @@ class (Functor t, Foldable t) => Traversable t where
     -- and collect the results.
     sequence :: Monad m => t (m a) -> m (t a)
     sequence = mapM id
+    {-# MINIMAL traverse | sequenceA #-}
 
 -- instances for Prelude types
 

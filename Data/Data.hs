@@ -1,5 +1,5 @@
 {-# LANGUAGE Trustworthy, FlexibleInstances #-}
-{-# LANGUAGE CPP, RankNTypes, ScopedTypeVariables, PolyKinds #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables, PolyKinds #-}
 {-# LANGUAGE StandaloneDeriving, DeriveDataTypeable, TypeOperators,
              GADTs #-}
 
@@ -110,12 +110,12 @@ import Prelude -- necessary to get dependencies right
 
 import Data.Typeable
 import Data.Maybe
+import Data.Version( Version(..) )
 import Control.Monad
 
 -- Imports for the instances
 import Data.Int              -- So we can give Data instance for Int8, ...
 import Data.Word             -- So we can give Data instance for Word8, ...
-#ifdef __GLASGOW_HASKELL__
 import GHC.Real( Ratio(..) ) -- So we can give Data instance for Ratio
 --import GHC.IOBase            -- So we can give Data instance for IO, Handle
 import GHC.Ptr               -- So we can give Data instance for Ptr
@@ -124,18 +124,6 @@ import GHC.ForeignPtr        -- So we can give Data instance for ForeignPtr
 --import GHC.ST                -- So we can give Data instance for ST
 --import GHC.Conc              -- So we can give Data instance for MVar & Co.
 import GHC.Arr               -- So we can give Data instance for Array
-#else
-# ifdef __HUGS__
-import Hugs.Prelude( Ratio(..) )
-# endif
-import Foreign.Ptr
-import Foreign.ForeignPtr
-import Data.Array
-import Data.Proxy
-#endif
-
-#include "Typeable.h"
-
 
 
 ------------------------------------------------------------------------------
@@ -1338,3 +1326,20 @@ instance (Typeable a, Data a) => Data (a :=: a) where
                       _ -> error "Data.Data.gunfold(:=:)"
   dataTypeOf _    = equalityDataType
   dataCast2 f     = gcast2 f
+
+-----------------------------------------------------------------------
+-- instance for Data.Version
+
+versionConstr :: Constr
+versionConstr = mkConstr versionDataType "Version" ["versionBranch","versionTags"] Prefix
+
+versionDataType :: DataType
+versionDataType = mkDataType "Data.Version.Version" [versionConstr]
+
+instance Data Version where
+  gfoldl k z (Version bs ts) = z Version `k` bs `k` ts
+  toConstr (Version _ _) = versionConstr
+  gunfold k z c = case constrIndex c of
+                    1 -> k (k (z Version))
+                    _ -> error "Data.Data.gunfold(Version)"
+  dataTypeOf _  = versionDataType

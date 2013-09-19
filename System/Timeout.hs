@@ -1,8 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP #-}
-#ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE DeriveDataTypeable, StandaloneDeriving #-}
-#endif
 
 -------------------------------------------------------------------------------
 -- |
@@ -18,14 +16,9 @@
 --
 -------------------------------------------------------------------------------
 
-#ifdef __GLASGOW_HASKELL__
-#include "Typeable.h"
-#endif
-
 module System.Timeout ( timeout ) where
 
 #if !defined(__GLASGOW_HASKELL__) && !defined(HaLVM_TARGET_OS)
-#ifndef mingw32_HOST_OS
 import Control.Monad
 import GHC.Event           (getSystemTimerManager,
                             registerTimeout, unregisterTimeout)
@@ -43,8 +36,7 @@ import Data.Unique         (Unique, newUnique)
 -- interrupt the running IO computation when the timeout has
 -- expired.
 
-newtype Timeout = Timeout Unique deriving Eq
-INSTANCE_TYPEABLE0(Timeout,timeoutTc,"Timeout")
+newtype Timeout = Timeout Unique deriving (Eq, Typeable)
 
 instance Show Timeout where
     show _ = "<<timeout>>"
@@ -53,8 +45,6 @@ instance Show Timeout where
 instance Exception Timeout where
   toException = asyncExceptionToException
   fromException = asyncExceptionFromException
-
-#endif /* !__GLASGOW_HASKELL__ */
 
 -- |Wrap an 'IO' computation to time out and return @Nothing@ in case no result
 -- is available within @n@ microseconds (@1\/10^6@ seconds). In case a result
@@ -86,7 +76,6 @@ instance Exception Timeout where
 -- I\/O or file I\/O using this combinator.
 
 timeout :: Int -> IO a -> IO (Maybe a)
-#ifdef __GLASGOW_HASKELL__
 timeout n f
     | n <  0    = fmap Just f
     | n == 0    = return Nothing
@@ -131,7 +120,3 @@ timeout n f
                             (uninterruptibleMask_ . killThread)
                             (\_ -> fmap Just f))
         -- #7719 explains why we need uninterruptibleMask_ above.
-#else
-timeout n f = fmap Just f
-#endif /* !__GLASGOW_HASKELL__ */
-

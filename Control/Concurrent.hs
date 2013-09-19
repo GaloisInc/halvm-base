@@ -15,7 +15,7 @@
 -- Module      :  Control.Concurrent
 -- Copyright   :  (c) The University of Glasgow 2001
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
--- 
+--
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
 -- Portability :  non-portable (concurrency)
@@ -33,17 +33,13 @@ module Control.Concurrent (
         -- * Basic concurrency operations
 
         ThreadId,
-#ifdef __GLASGOW_HASKELL__
         myThreadId,
-#endif
 
         forkIO,
-#ifdef __GLASGOW_HASKELL__
         forkFinally,
         forkIOWithUnmask,
         killThread,
         throwTo,
-#endif
 
         -- ** Threads with affinity
         forkOn,
@@ -54,21 +50,19 @@ module Control.Concurrent (
 
         -- * Scheduling
 
-        -- $conc_scheduling     
+        -- $conc_scheduling
         yield,
 
         -- ** Blocking
 
         -- $blocking
 
-#ifdef __GLASGOW_HASKELL__
         -- ** Waiting
         threadDelay,
         threadWaitRead,
         threadWaitWrite,
         threadWaitReadSTM,
         threadWaitWriteSTM,
-#endif
 
         -- * Communication abstractions
 
@@ -77,7 +71,6 @@ module Control.Concurrent (
         module Control.Concurrent.QSem,
         module Control.Concurrent.QSemN,
 
-#ifdef __GLASGOW_HASKELL__
         -- * Bound Threads
         -- $boundthreads
         rtsSupportsBoundThreads,
@@ -85,7 +78,6 @@ module Control.Concurrent (
         isCurrentThreadBound,
         runInBoundThread,
         runInUnboundThread,
-#endif
 
         -- * Weak references to ThreadIds
         mkWeakThreadId,
@@ -117,7 +109,6 @@ import Prelude
 
 import Control.Exception.Base as Exception
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Exception
 import GHC.Conc hiding (threadWaitRead, threadWaitWrite,
                         threadWaitReadSTM, threadWaitWriteSTM)
@@ -136,20 +127,11 @@ import Foreign.C
 import System.IO
 import Data.Maybe (Maybe(..))
 #endif
-#endif
-
-#ifdef __HUGS__
-import Hugs.ConcBase
-#endif
 
 import Control.Concurrent.MVar
 import Control.Concurrent.Chan
 import Control.Concurrent.QSem
 import Control.Concurrent.QSemN
-
-#ifdef __HUGS__
-type ThreadId = ()
-#endif
 
 {- $conc_intro
 
@@ -189,7 +171,7 @@ In GHC, threads may also communicate via exceptions.
     will print either @aaaaaaaaaaaaaa...@ or @bbbbbbbbbbbb...@,
     instead of some random interleaving of @a@s and @b@s.  In
     practice, cooperative multitasking is sufficient for writing
-    simple graphical user interfaces.  
+    simple graphical user interfaces.
 -}
 
 {- $blocking
@@ -201,8 +183,6 @@ all other Haskell threads in the system, although I\/O operations will
 not.  With the @-threaded@ option, only foreign calls with the @unsafe@
 attribute will block all other threads.
 
-Using Hugs, all I\/O operations and foreign calls will block all other
-Haskell threads.
 -}
 
 -- | fork a thread and call the supplied function when the thread is about
@@ -221,7 +201,6 @@ forkFinally action and_then =
   mask $ \restore ->
     forkIO $ try (restore action) >>= and_then
 
-#ifdef __GLASGOW_HASKELL__
 -- ---------------------------------------------------------------------------
 -- Bound Threads
 
@@ -249,7 +228,7 @@ called the function). Also, the @main@ action of every Haskell program is
 run in a bound thread.
 
 Why do we need this? Because if a foreign library is called from a thread
-created using 'forkIO', it won't have access to any /thread-local state/ - 
+created using 'forkIO', it won't have access to any /thread-local state/ -
 state variables that have specific values for each OS thread
 (see POSIX's @pthread_key_create@ or Win32's @TlsAlloc@). Therefore, some
 libraries (OpenGL, for example) will not work from a thread created using
@@ -279,7 +258,7 @@ waiting for the results in the main thread.
 foreign import ccall rtsSupportsBoundThreads :: Bool
 
 
-{- | 
+{- |
 Like 'forkIO', this sparks off a new thread to run the 'IO'
 computation passed as the first argument, and returns the 'ThreadId'
 of the newly created thread.
@@ -347,10 +326,10 @@ forkOS action0
 isCurrentThreadBound :: IO Bool
 isCurrentThreadBound = IO $ \ s# ->
     case isCurrentThreadBound# s# of
-        (# s2#, flg #) -> (# s2#, not (flg ==# 0#) #)
+        (# s2#, flg #) -> (# s2#, isTrue# (flg /=# 0#) #)
 
 
-{- | 
+{- |
 Run the 'IO' computation passed as the first argument. If the calling thread
 is not /bound/, a bound thread is created temporarily. @runInBoundThread@
 doesn't finish until the 'IO' computation finishes.
@@ -375,7 +354,7 @@ runInBoundThread action
                   unsafeResult
     | otherwise = failNonThreaded
 
-{- | 
+{- |
 Run the 'IO' computation passed as the first argument. If the calling thread
 is /bound/, an unbound thread is created temporarily using 'forkIO'.
 @runInBoundThread@ doesn't finish until the 'IO' computation finishes.
@@ -406,9 +385,7 @@ runInUnboundThread action = do
 
 unsafeResult :: Either SomeException a -> IO a
 unsafeResult = either Exception.throwIO return
-#endif /* __GLASGOW_HASKELL__ */
 
-#ifdef __GLASGOW_HASKELL__
 -- ---------------------------------------------------------------------------
 -- threadWaitRead/threadWaitWrite
 
@@ -480,7 +457,7 @@ threadWaitReadSTM fd
 -- is an IO action that can be used to deregister interest
 -- in the file descriptor.
 threadWaitWriteSTM :: Fd -> IO (STM (), IO ())
-threadWaitWriteSTM fd 
+threadWaitWriteSTM fd
 #ifdef mingw32_HOST_OS
   | threaded = do v <- newTVarIO Nothing
                   mask_ $ void $ forkIO $ do result <- try (waitFd fd 1)
@@ -596,7 +573,7 @@ foreign import ccall safe "fdReady"
 
 >    children :: MVar [MVar ()]
 >    children = unsafePerformIO (newMVar [])
->    
+>
 >    waitForChildren :: IO ()
 >    waitForChildren = do
 >      cs <- takeMVar children
@@ -682,5 +659,3 @@ alternative then it is possible to prevent the thread from being
 considered deadlocked by making a 'StablePtr' pointing to it.  Don't
 forget to release the 'StablePtr' later with 'freeStablePtr'.
 -}
-
-#endif /* __GLASGOW_HASKELL__ */

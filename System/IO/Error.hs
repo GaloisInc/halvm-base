@@ -1,5 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE CPP, NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -81,26 +81,16 @@ module System.IO.Error (
     modifyIOError,
   ) where
 
-#ifndef __HUGS__
 import Control.Exception.Base
-#endif
 
-#ifndef __HUGS__
 import Data.Either
-#endif
 import Data.Maybe
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Base
 import GHC.IO
 import GHC.IO.Exception
 import GHC.IO.Handle.Types
 import Text.Show
-#endif
-
-#ifdef __HUGS__
-import Hugs.Prelude(Handle, IOException(..), IOErrorType(..), IO)
-#endif
 
 -- | The construct 'tryIOError' @comp@ exposes IO errors which occur within a
 -- computation, and which are not fully handled.
@@ -124,9 +114,7 @@ mkIOError t location maybe_hdl maybe_filename =
                IOError{ ioe_type = t, 
                         ioe_location = location,
                         ioe_description = "",
-#if defined(__GLASGOW_HASKELL__)
                         ioe_errno = Nothing,
-#endif
                         ioe_handle = maybe_hdl, 
                         ioe_filename = maybe_filename
                         }
@@ -325,7 +313,6 @@ annotateIOError ioe loc hdl path =
     Nothing `mplus` ys = ys
     xs      `mplus` _  = xs
 
-#ifndef __HUGS__
 -- | The 'catchIOError' function establishes a handler that receives any
 -- 'IOError' raised in the action protected by 'catchIOError'.
 -- An 'IOError' is caught by
@@ -348,5 +335,3 @@ annotateIOError ioe loc hdl path =
 -- exceptions, use 'Control.Exception.catch' from "Control.Exception".
 catchIOError :: IO a -> (IOError -> IO a) -> IO a
 catchIOError = catch
-#endif /* !__HUGS__ */
-

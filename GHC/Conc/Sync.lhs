@@ -34,8 +34,6 @@
 -- bits it exports, we'd rather have Control.Concurrent and the other
 -- higher level modules be the home.  Hence:
 
-#include "Typeable.h"
-
 -- #not-home
 module GHC.Conc.Sync
         ( ThreadId(..)
@@ -150,8 +148,6 @@ a pointer to the thread itself.  This means the thread itself can\'t be
 garbage collected until you drop the 'ThreadId'.
 This misfeature will hopefully be corrected at a later date.
 
-/Note/: Hugs does not provide any operations on other threads;
-it defines 'ThreadId' as a synonym for ().
 -}
 
 instance Show ThreadId where
@@ -435,8 +431,9 @@ runSparks :: IO ()
 runSparks = IO loop
   where loop s = case getSpark# s of
                    (# s', n, p #) ->
-                      if n ==# 0# then (# s', () #)
-                                  else p `seq` loop s'
+                      if isTrue# (n ==# 0#)
+                      then (# s', () #)
+                      else p `seq` loop s'
 
 data BlockReason
   = BlockedOnMVar
@@ -493,7 +490,7 @@ threadStatus (ThreadId t) = IO $ \s ->
 threadCapability :: ThreadId -> IO (Int, Bool)
 threadCapability (ThreadId t) = IO $ \s ->
    case threadStatus# t s of
-     (# s', _, cap#, locked# #) -> (# s', (I# cap#, locked# /=# 0#) #)
+     (# s', _, cap#, locked# #) -> (# s', (I# cap#, isTrue# (locked# /=# 0#)) #)
 
 -- | make a weak pointer to a 'ThreadId'.  It can be important to do
 -- this if you want to hold a reference to a 'ThreadId' while still
@@ -529,11 +526,10 @@ transactions.
 \begin{code}
 -- |A monad supporting atomic memory transactions.
 newtype STM a = STM (State# RealWorld -> (# State# RealWorld, a #))
+                deriving Typeable
 
 unSTM :: STM a -> (State# RealWorld -> (# State# RealWorld, a #))
 unSTM (STM a) = a
-
-INSTANCE_TYPEABLE1(STM,stmTc,"STM")
 
 instance  Functor STM where
    fmap f x = x >>= (return . f)
@@ -672,11 +668,10 @@ always i = alwaysSucceeds ( do v <- i
 
 -- |Shared memory locations that support atomic memory transactions.
 data TVar a = TVar (TVar# RealWorld a)
-
-INSTANCE_TYPEABLE1(TVar,tvarTc,"TVar")
+              deriving Typeable
 
 instance Eq (TVar a) where
-        (TVar tvar1#) == (TVar tvar2#) = sameTVar tvar1# tvar2#
+        (TVar tvar1#) == (TVar tvar2#) = isTrue# (sameTVar# tvar1# tvar2#)
 
 -- |Create a new TVar holding a value supplied
 newTVar :: a -> STM (TVar a)

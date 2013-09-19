@@ -1,5 +1,4 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -27,18 +26,8 @@ module Data.STRef (
 
 import Prelude
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.ST
 import GHC.STRef
-#endif
-
-#ifdef __HUGS__
-import Hugs.ST
-import Data.Typeable
-
-#include "Typeable.h"
-INSTANCE_TYPEABLE2(STRef,stRefTc,"STRef")
-#endif
 
 -- | Mutate the contents of an 'STRef'.
 --
