@@ -170,7 +170,6 @@ module System.IO (
     setXenGetChar,
 #endif
 
-#if !defined(__HUGS__)
     -- * Unicode encoding\/decoding
 
     -- | A text-mode 'Handle' has an associated 'TextEncoding', which
@@ -286,7 +285,6 @@ setXenGetChar f = atomicModifyIORef xenOps
   (\ ops -> (ops{ xenGetChar = f }, ()))
 #endif
 
-#ifdef __GLASGOW_HASKELL__
 -- | Write a character to the standard output device
 -- (same as 'hPutChar' 'stdout').
 
