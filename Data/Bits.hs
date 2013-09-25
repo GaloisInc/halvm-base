@@ -149,6 +149,8 @@ class Eq a => Bits a where
     {-| Return the number of bits in the type of the argument.  The actual
         value of the argument is ignored.  Returns Nothing
         for types that do not have a fixed bitsize, like 'Integer'.
+
+        /Since: 4.7.0.0/
         -}
     bitSizeMaybe      :: a -> Maybe Int
 
@@ -183,7 +185,9 @@ class Eq a => Bits a where
         result is undefined for negative shift amounts and shift amounts
         greater or equal to the 'bitSize'.
 
-        Defaults to 'shiftL' unless defined explicitly by an instance. -}
+        Defaults to 'shiftL' unless defined explicitly by an instance.
+
+        /Since: 4.5.0.0/ -}
     unsafeShiftL            :: a -> Int -> a
     {-# INLINE unsafeShiftL #-}
     x `unsafeShiftL` i = x `shiftL` i
@@ -210,7 +214,9 @@ class Eq a => Bits a where
         i.e. they fill the top bits with 1 if the @x@ is negative
         and with 0 otherwise.
 
-        Defaults to 'shiftR' unless defined explicitly by an instance. -}
+        Defaults to 'shiftR' unless defined explicitly by an instance.
+
+        /Since: 4.5.0.0/ -}
     unsafeShiftR            :: a -> Int -> a
     {-# INLINE unsafeShiftR #-}
     x `unsafeShiftR` i = x `shiftR` i
@@ -236,7 +242,9 @@ class Eq a => Bits a where
     x `rotateR` i = x `rotate` (-i)
 
     {-| Return the number of set bits in the argument.  This number is
-        known as the population count or the Hamming weight. -}
+        known as the population count or the Hamming weight.
+
+        /Since: 4.5.0.0/ -}
     popCount          :: a -> Int
 
     {-# MINIMAL (.&.), (.|.), xor, complement,
@@ -244,7 +252,20 @@ class Eq a => Bits a where
                 (rotate | (rotateL, rotateR)),
                 bitSize, bitSizeMaybe, isSigned, testBit, bit, popCount #-}
 
+-- |The 'FiniteBits' class denotes types with a finite, fixed number of bits.
+--
+-- /Since: 4.7.0.0/
 class Bits b => FiniteBits b where
+    -- | Return the number of bits in the type of the argument.
+    -- The actual value of the argument is ignored. Moreover, 'finiteBitSize'
+    -- is total, in contrast to the deprecated 'bitSize' function it replaces.
+    --
+    -- @
+    -- 'finiteBitSize' = 'bitSize'
+    -- 'bitSizeMaybe' = 'Just' . 'finiteBitSize'
+    -- @
+    --
+    -- /Since: 4.7.0.0/
     finiteBitSize :: b -> Int
 
 -- The defaults below are written with lambdas so that e.g.
@@ -254,6 +275,8 @@ class Bits b => FiniteBits b where
 -- | Default implementation for 'bit'.
 --
 -- Note that: @bitDefault i = 1 `shiftL` i@
+--
+-- /Since: 4.6.0.0/
 bitDefault :: (Bits a, Num a) => Int -> a
 bitDefault = \i -> 1 `shiftL` i
 {-# INLINE bitDefault #-}
@@ -261,6 +284,8 @@ bitDefault = \i -> 1 `shiftL` i
 -- | Default implementation for 'testBit'.
 --
 -- Note that: @testBitDefault x i = (x .&. bit i) /= 0@
+--
+-- /Since: 4.6.0.0/
 testBitDefault ::  (Bits a, Num a) => a -> Int -> Bool
 testBitDefault = \x i -> (x .&. bit i) /= 0
 {-# INLINE testBitDefault #-}
@@ -269,6 +294,8 @@ testBitDefault = \x i -> (x .&. bit i) /= 0
 --
 -- This implementation is intentionally naive. Instances are expected to provide
 -- an optimized implementation for their size.
+--
+-- /Since: 4.6.0.0/
 popCountDefault :: (Bits a, Num a) => a -> Int
 popCountDefault = go 0
  where

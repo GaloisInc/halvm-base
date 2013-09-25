@@ -93,7 +93,6 @@ Other Prelude modules are much easier with fewer complex dependencies.
 
 #include "MachDeps.h"
 
--- #hide
 module GHC.Base
         (
         module GHC.Base,
@@ -106,7 +105,6 @@ module GHC.Base
         module GHC.Err          -- import it explicitly
   )
         where
-
 import GHC.Types
 import GHC.Classes
 import GHC.CString
@@ -186,6 +184,9 @@ class  Functor f  where
     -- overridden with a more efficient version.
     (<$)        :: a -> f b -> f a
     (<$)        =  fmap . const
+
+    fmapCoerce :: Coercible a b => f a -> f b
+    fmapCoerce = fmap coerce
 
 {- | The 'Monad' class defines the basic operations over a /monad/,
 a concept from a branch of mathematics known as /category theory/.

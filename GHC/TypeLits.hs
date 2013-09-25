@@ -14,7 +14,10 @@
 {-# OPTIONS_GHC -XNoImplicitPrelude #-}
 {-| This module is an internal GHC module.  It declares the constants used
 in the implementation of type-level natural numbers.  The programmer interface
-for working with type-level naturals should be defined in a separate library. -}
+for working with type-level naturals should be defined in a separate library.
+
+/Since: 4.6.0.0/
+-}
 
 module GHC.TypeLits
   ( -- * Kinds
@@ -28,7 +31,7 @@ module GHC.TypeLits
   , withSing, singThat
 
     -- * Functions on type nats
-  , type (<=), type (<=?), type (+), type (*), type (^)
+  , type (<=), type (<=?), type (+), type (*), type (^), type (-)
 
     -- * Comparing for equality
   , type (:~:) (..), eqSingNat, eqSingSym, eqSingBool
@@ -41,7 +44,7 @@ module GHC.TypeLits
 
 
     -- * Matching on type-nats
-  , Nat1(..), FromNat1
+  , Nat1(..), FromNat1, ToNat1
 
     -- * Kind parameters
   , KindIs(..), Demote, DemoteRep
@@ -121,7 +124,8 @@ type family (m :: Nat) * (n :: Nat) :: Nat
 -- | Exponentiation of type-level naturals.
 type family (m :: Nat) ^ (n :: Nat) :: Nat
 
-
+-- | Subtraction of type-level naturals.
+type family (m :: Nat) - (n :: Nat) :: Nat
 
 
 --------------------------------------------------------------------------------
@@ -309,13 +313,19 @@ instance Show (IsEven n) where
 -- Used both at the type and at the value level.
 data Nat1 = Zero | Succ Nat1
 
-type family FromNat1 (n :: Nat1) :: Nat
-type instance FromNat1 Zero     = 0
-type instance FromNat1 (Succ n) = 1 + FromNat1 n
+type family ToNat1 (n :: Nat) where
+  ToNat1 0 = Zero
+  ToNat1 x = Succ (ToNat1 (x - 1))
+
+type family FromNat1 (n :: Nat1) :: Nat where
+  FromNat1 Zero     = 0
+  FromNat1 (Succ n) = 1 + FromNat1 n
 
 --------------------------------------------------------------------------------
 
 -- | A type that provides evidence for equality between two types.
+--
+-- /Since: 4.7.0.0/
 data (:~:) :: k -> k -> * where
   Refl :: a :~: a
 

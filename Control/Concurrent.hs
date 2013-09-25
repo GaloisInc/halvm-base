@@ -196,6 +196,7 @@ attribute will block all other threads.
 -- This function is useful for informing the parent when a child
 -- terminates, for example.
 --
+-- /Since: 4.6.0.0/
 forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
 forkFinally action and_then =
   mask $ \restore ->
@@ -434,6 +435,8 @@ threadWaitWrite fd
 -- to read from a file descriptor. The second returned value
 -- is an IO action that can be used to deregister interest
 -- in the file descriptor.
+--
+-- /Since: 4.7.0.0/
 threadWaitReadSTM :: Fd -> IO (STM (), IO ())
 threadWaitReadSTM fd
 #ifdef mingw32_HOST_OS
@@ -456,6 +459,8 @@ threadWaitReadSTM fd
 -- can be written to a file descriptor. The second returned value
 -- is an IO action that can be used to deregister interest
 -- in the file descriptor.
+--
+-- /Since: 4.7.0.0/
 threadWaitWriteSTM :: Fd -> IO (STM (), IO ())
 threadWaitWriteSTM fd
 #ifdef mingw32_HOST_OS
