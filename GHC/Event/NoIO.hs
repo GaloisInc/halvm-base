@@ -1,6 +1,5 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE Trustworthy #-}
 module GHC.Event.NoIO(
          ensureIOManagerIsRunning
@@ -30,17 +29,28 @@ ensureIOManagerIsRunning = forkIO runWaiters >> return ()
 ioManagerCapabilitiesChanged :: IO ()
 ioManagerCapabilitiesChanged  = return ()
 
+-- The following two functions are obvious candidates for mdo/fixIO,
+-- but importing either causes circular dependency problems
 threadDelay :: Int -> IO ()
-threadDelay usecs = mdo
+threadDelay usecs = do
   wait <- newEmptyMVar
-  sp <- newStablePtr $ putMVar wait () >> freeStablePtr sp
+  spMV <- newEmptyMVar
+  sp <- newStablePtr $ do
+          putMVar wait ()
+          takeMVar spMV >>= freeStablePtr
+  putMVar spMV sp
   registerWaiter usecs sp
   takeMVar wait
 
 registerDelay :: Int -> IO (TVar Bool)
-registerDelay usecs = mdo
+registerDelay usecs = do
   t <- atomically $ newTVar False
-  sp <- newStablePtr $ atomically (writeTVar t True) >> freeStablePtr sp
+  spMV <- newEmptyMVar
+  sp <- newStablePtr $ do
+          atomically $ writeTVar t True
+          takeMVar spMV >>= freeStablePtr
+  putMVar spMV sp
+  registerWaiter usecs sp
   return t
 
 foreign import ccall unsafe "registerWaiter"
