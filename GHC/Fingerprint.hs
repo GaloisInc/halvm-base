@@ -1,8 +1,7 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE NoImplicitPrelude
+{-# LANGUAGE CPP
+           , NoImplicitPrelude
            , BangPatterns
-           , ForeignFunctionInterface
-           , EmptyDataDecls
   #-}
 
 -- ----------------------------------------------------------------------------

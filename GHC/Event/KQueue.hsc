@@ -1,7 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE CPP
-           , ForeignFunctionInterface
-           , CApiFFI
+{-# LANGUAGE CApiFFI
            , GeneralizedNewtypeDeriving
            , NoImplicitPrelude
            , RecordWildCards

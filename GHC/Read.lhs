@@ -1,7 +1,6 @@
 \begin{code}
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE NoImplicitPrelude, StandaloneDeriving, PatternGuards,
-             ScopedTypeVariables #-}
+{-# LANGUAGE NoImplicitPrelude, StandaloneDeriving, ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
@@ -316,7 +315,7 @@ choose :: [(String, ReadPrec a)] -> ReadPrec a
 -- Esp useful for nullary constructors; e.g.
 --    @choose [(\"A\", return A), (\"B\", return B)]@
 -- We match both Ident and Symbol because the constructor
--- might be an operator eg (:=:)
+-- might be an operator eg @(:~:)@
 choose sps = foldr ((+++) . try_one) pfail sps
            where
              try_one (s,p) = do { token <- lexP ;
