@@ -311,8 +311,8 @@ Library
             GHC.Windows
 
     if os(HaLVM)
-        include-dirs: libc-include
-        cpp-options: -DHaLVM_TARGET_OS
+        other-modules:
+            GHC.Event.NoIO
 
     if !os(windows) && !os(HaLVM)
         exposed-modules:
