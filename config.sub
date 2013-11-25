@@ -1503,6 +1503,7 @@ case $os in
 		;;
 	-HaLVM)
 		os=-HaLVM
+		;;
 	-dicos*)
 		os=-dicos
 		;;
