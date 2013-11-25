@@ -8,6 +8,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE UndecidableInstances #-}  -- for compiling instances of (==)
 {-# OPTIONS_GHC -XNoImplicitPrelude #-}
 {-| This module is an internal GHC module.  It declares the constants used
 in the implementation of type-level natural numbers.  The programmer interface
@@ -31,7 +32,7 @@ module GHC.TypeLits
 
   ) where
 
-import GHC.Base(Eq(..), Ord(..), Bool(True), otherwise)
+import GHC.Base(Eq(..), Ord(..), Bool(True,False), otherwise)
 import GHC.Num(Integer)
 import GHC.Base(String)
 import GHC.Show(Show(..))
@@ -39,6 +40,7 @@ import GHC.Read(Read(..))
 import GHC.Prim(magicDict)
 import Data.Maybe(Maybe(..))
 import Data.Proxy(Proxy(..))
+import Data.Type.Equality(type (==))
 
 -- | (Kind) This is the kind of type-level natural numbers.
 data Nat
@@ -51,18 +53,24 @@ data Symbol
 
 -- | This class gives the integer associated with a type-level natural.
 -- There are instances of the class for every concrete literal: 0, 1, 2, etc.
+--
+-- /Since: 4.7.0.0/
 class KnownNat (n :: Nat) where
   natSing :: SNat n
 
 -- | This class gives the integer associated with a type-level symbol.
 -- There are instances of the class for every concrete literal: "hello", etc.
+--
+-- /Since: 4.7.0.0/
 class KnownSymbol (n :: Symbol) where
   symbolSing :: SSymbol n
 
+-- | /Since: 4.7.0.0/
 natVal :: forall n proxy. KnownNat n => proxy n -> Integer
 natVal _ = case natSing :: SNat n of
              SNat x -> x
 
+-- | /Since: 4.7.0.0/
 symbolVal :: forall n proxy. KnownSymbol n => proxy n -> String
 symbolVal _ = case symbolSing :: SSymbol n of
                 SSymbol x -> x
@@ -71,19 +79,23 @@ symbolVal _ = case symbolSing :: SSymbol n of
 
 -- | This type represents unknown type-level natural numbers.
 data SomeNat    = forall n. KnownNat n    => SomeNat    (Proxy n)
+                  -- ^ /Since: 4.7.0.0/
 
 -- | This type represents unknown type-level symbols.
 data SomeSymbol = forall n. KnownSymbol n => SomeSymbol (Proxy n)
+                  -- ^ /Since: 4.7.0.0/
 
 -- | Convert an integer into an unknown type-level natural.
-{-# NOINLINE someNatVal #-}
+--
+-- /Since: 4.7.0.0/
 someNatVal :: Integer -> Maybe SomeNat
 someNatVal n
   | n >= 0        = Just (withSNat SomeNat (SNat n) Proxy)
   | otherwise     = Nothing
 
 -- | Convert a string into an unknown type-level symbol.
-{-# NOINLINE someSymbolVal #-}
+--
+-- /Since: 4.7.0.0/
 someSymbolVal :: String -> SomeSymbol
 someSymbolVal n   = withSSymbol SomeSymbol (SSymbol n) Proxy
 
@@ -117,6 +129,15 @@ instance Show SomeSymbol where
 instance Read SomeSymbol where
   readsPrec p xs = [ (someSymbolVal a, ys) | (a,ys) <- readsPrec p xs ]
 
+type family EqNat (a :: Nat) (b :: Nat) where
+  EqNat a a = True
+  EqNat a b = False
+type instance a == b = EqNat a b
+
+type family EqSymbol (a :: Symbol) (b :: Symbol) where
+  EqSymbol a a = True
+  EqSymbol a b = False
+type instance a == b = EqSymbol a b
 
 --------------------------------------------------------------------------------
 

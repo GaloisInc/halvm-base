@@ -54,10 +54,12 @@ test('char002', 	normal, compile_and_run, [''])
 test('cstring001', 	normal, compile_and_run, [''])
 
 test('length001',
-     # This fails without -O, as it relies on a RULE being applied
-     expect_fail_for(['normal', 'threaded1', 'llvm']),
-     compile_and_run,
-     [''])
+     # length001 depends on a RULE being applied, and without -O takes
+     # excessive amounts of stack space. So we specifically set a low
+     # stack limit and mark it as failing under a few conditions.
+     [extra_run_opts('+RTS -K8m -RTS'),
+     expect_fail_for(['normal', 'threaded1', 'llvm'])],
+     compile_and_run, [''])
 
 test('ratio001', 	normal, compile_and_run, [''])
 
@@ -132,3 +134,23 @@ test('CatEntail', normal, compile, [''])
 
 test('T7653', normal, compile_and_run, [''])
 test('T7787', normal, compile_and_run, [''])
+
+test('topHandler01', when(opsys('mingw32'), skip), compile_and_run, [''])
+test('topHandler02',
+     [when(opsys('mingw32'), skip),
+      omit_ways(['ghci']),
+      # Irritatingly, the test driver calls the programs via a shell, and
+      # depending on the shell, they can add their own "helpful" commentary,
+      # pretty printing the name of the signal that killed the process. So we
+      # ignore the stdout here, we only care about the exit code (which itself
+      # is messed up because of the shell, using 128+sig encoding)
+      ignore_output,
+      exit_code(130)  # actually signal 2 SIGINT
+     ], compile_and_run, [''])
+test('topHandler03',
+     [when(opsys('mingw32'), skip),
+      # As above, shells, grrr.
+      ignore_output,
+      exit_code(143)  # actually signal 15 SIGTERM
+     ], compile_and_run, [''])
+

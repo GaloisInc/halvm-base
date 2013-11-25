@@ -35,6 +35,7 @@ import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 import GHC.Base
 import GHC.Conc.Sync (withMVar)
+import GHC.Enum (maxBound)
 import GHC.Num (Num(..))
 import GHC.Real (ceiling, fromIntegral)
 import GHC.Show (Show)
@@ -90,7 +91,7 @@ poll p mtout f = do
     E.throwErrnoIfMinus1NoRetry "c_poll" $
     case mtout of
       Just tout ->
-        c_poll ptr (fromIntegral len) (fromIntegral (fromTimeout tout))
+        c_pollLoop ptr (fromIntegral len) (fromTimeout tout)
       Nothing   ->
         c_poll_unsafe ptr (fromIntegral len) 0
   unless (n == 0) $ do
@@ -102,6 +103,41 @@ poll p mtout f = do
                 return (i', i' == n)
         else return (i, True)
   return (fromIntegral n)
+  where
+    -- The poll timeout is specified as an Int, but c_poll takes a CInt. These
+    -- can't be safely coerced as on many systems (e.g. x86_64) CInt has a
+    -- maxBound of (2^32 - 1), even though Int may have a significantly higher
+    -- bound.
+    --
+    -- This function deals with timeouts greater than maxBound :: CInt, by
+    -- looping until c_poll returns a non-zero value (0 indicates timeout
+    -- expired) OR the full timeout has passed.
+    c_pollLoop :: Ptr PollFd -> (#type nfds_t) -> Int -> IO CInt
+    c_pollLoop ptr len tout
+        | tout <= maxPollTimeout = c_poll ptr len (fromIntegral tout)
+        | otherwise = do
+            result <- c_poll ptr len (fromIntegral maxPollTimeout)
+            if result == 0
+               then c_pollLoop ptr len (fromIntegral (tout - maxPollTimeout))
+               else return result
+
+    -- We need to account for 3 cases:
+    --     1. Int and CInt are of equal size.
+    --     2. Int is larger than CInt
+    --     3. Int is smaller than CInt
+    --
+    -- In case 1, the value of maxPollTimeout will be the maxBound of Int.
+    --
+    -- In case 2, the value of maxPollTimeout will be the maxBound of CInt,
+    -- which is the largest value accepted by c_poll. This will result in
+    -- c_pollLoop recursing if the provided timeout is larger.
+    --
+    -- In case 3, "fromIntegral (maxBound :: CInt) :: Int" will result in a
+    -- negative Int, max will thus return maxBound :: Int. Since poll doesn't
+    -- accept values bigger than maxBound :: Int and CInt is larger than Int,
+    -- there is no problem converting Int to CInt for the c_poll call.
+    maxPollTimeout :: Int
+    maxPollTimeout = max maxBound (fromIntegral (maxBound :: CInt))
 
 fromTimeout :: E.Timeout -> Int
 fromTimeout E.Forever     = -1
