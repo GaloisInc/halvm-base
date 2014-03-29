@@ -25,6 +25,7 @@ module Data.Bits (
     complement,
     shift,
     rotate,
+    zeroBits,
     bit,
     setBit,
     clearBit,
@@ -72,7 +73,7 @@ The 'Bits' class defines bitwise operations over integral types.
 Minimal complete definition: '.&.', '.|.', 'xor', 'complement',
 ('shift' or ('shiftL' and 'shiftR')), ('rotate' or ('rotateL' and 'rotateR')),
 'bitSize', 'isSigned', 'testBit', 'bit', and 'popCount'.  The latter three can
-be implemented using `testBitDefault', 'bitDefault, and 'popCountDefault', if
+be implemented using `testBitDefault', 'bitDefault', and 'popCountDefault', if
 @a@ is also an instance of 'Num'.
 -}
 class Eq a => Bits a where
@@ -131,7 +132,26 @@ class Eq a => Bits a where
                   | i>0  = (x `shift` i) .|. (x `shift` (i-bitSize x))
     -}
 
-    -- | @bit i@ is a value with the @i@th bit set and all other bits clear
+    -- | 'zeroBits' is the value with all bits unset.
+    --
+    -- The following laws ought to hold (for all valid bit indices @/n/@):
+    --
+    --   * @'clearBit' 'zeroBits' /n/ == 'zeroBits'@
+    --   * @'setBit'   'zeroBits' /n/ == 'bit' /n/@
+    --   * @'testBit'  'zeroBits' /n/ == False@
+    --   * @'popCount' 'zeroBits'   == 0@
+    --
+    -- This method uses @'clearBit' ('bit' 0) 0@ as its default
+    -- implementation (which ought to be equivalent to 'zeroBits' for
+    -- types which possess a 0th bit).
+    --
+    -- /Since: 4.7.0.0/
+    zeroBits :: a
+    zeroBits = clearBit (bit 0) 0
+
+    -- | @bit /i/@ is a value with the @/i/@th bit set and all other bits clear.
+    --
+    -- See also 'zeroBits'.
     bit               :: Int -> a
 
     -- | @x \`setBit\` i@ is the same as @x .|. bit i@
@@ -343,18 +363,16 @@ instance Bits Int where
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
 
+    zeroBits = 0
+
     bit     = bitDefault
 
     testBit = testBitDefault
 
-    (I# x#) .&.   (I# y#)  = I# (word2Int# (int2Word# x# `and#` int2Word# y#))
-
-    (I# x#) .|.   (I# y#)  = I# (word2Int# (int2Word# x# `or#`  int2Word# y#))
-
-    (I# x#) `xor` (I# y#)  = I# (word2Int# (int2Word# x# `xor#` int2Word# y#))
-
-    complement (I# x#)     = I# (word2Int# (int2Word# x# `xor#` int2Word# (-1#)))
-
+    (I# x#) .&.   (I# y#)          = I# (x# `andI#` y#)
+    (I# x#) .|.   (I# y#)          = I# (x# `orI#`  y#)
+    (I# x#) `xor` (I# y#)          = I# (x# `xorI#` y#)
+    complement (I# x#)             = I# (notI# x#)
     (I# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)      = I# (x# `iShiftL#` i#)
         | otherwise                = I# (x# `iShiftRA#` negateInt# i#)
@@ -365,11 +383,9 @@ instance Bits Int where
 
     {-# INLINE rotate #-} 	-- See Note [Constant folding for rotate]
     (I# x#) `rotate` (I# i#) =
-        I# (word2Int# ((x'# `uncheckedShiftL#` i'#) `or#`
-                       (x'# `uncheckedShiftRL#` (wsib -# i'#))))
+        I# ((x# `uncheckedIShiftL#` i'#) `orI#` (x# `uncheckedIShiftRL#` (wsib -# i'#)))
       where
-        !x'# = int2Word# x#
-        !i'# = word2Int# (int2Word# i# `and#` int2Word# (wsib -# 1#))
+        !i'# = i# `andI#` (wsib -# 1#)
         !wsib = WORD_SIZE_IN_BITS#   {- work around preprocessor problem (??) -}
     bitSizeMaybe i         = Just (finiteBitSize i)
     bitSize i              = finiteBitSize i
@@ -402,7 +418,7 @@ instance Bits Word where
         | isTrue# (i'# ==# 0#) = W# x#
         | otherwise  = W# ((x# `uncheckedShiftL#` i'#) `or#` (x# `uncheckedShiftRL#` (wsib -# i'#)))
         where
-        !i'# = word2Int# (int2Word# i# `and#` int2Word# (wsib -# 1#))
+        !i'# = i# `andI#` (wsib -# 1#)
         !wsib = WORD_SIZE_IN_BITS#  {- work around preprocessor problem (??) -}
     bitSizeMaybe i           = Just (finiteBitSize i)
     bitSize i                = finiteBitSize i
@@ -423,6 +439,7 @@ instance Bits Integer where
                      | otherwise = shiftRInteger x (negateInt# i#)
    testBit x (I# i) = testBitInteger x i
 
+   zeroBits   = 0
    bit        = bitDefault
    popCount   = popCountDefault
 

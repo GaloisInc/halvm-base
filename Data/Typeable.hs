@@ -35,6 +35,13 @@
 -- and type-safe cast (but not dynamics) to support the \"Scrap your
 -- boilerplate\" style of generic programming.
 --
+-- == Compatibility Notes
+--
+-- Since GHC 7.8, 'Typeable' is poly-kinded. The changes required for this might
+-- break some old programs involving 'Typeable'. More details on this, including
+-- how to fix your code, can be found on the
+-- <https://ghc.haskell.org/trac/ghc/wiki/GhcKinds/PolyTypeable PolyTypeable wiki page>
+--
 -----------------------------------------------------------------------------
 
 module Data.Typeable
@@ -48,6 +55,8 @@ module Data.Typeable
 
         -- * For backwards compatibility
         typeOf, typeOf1, typeOf2, typeOf3, typeOf4, typeOf5, typeOf6, typeOf7,
+        Typeable1, Typeable2, Typeable3, Typeable4, Typeable5, Typeable6,
+        Typeable7,
 
         -- * Type-safe cast
         cast,

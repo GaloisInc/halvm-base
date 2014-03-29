@@ -1,4 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE AutoDeriveTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -27,9 +29,9 @@
 -- it admits more sharing than the monadic interface.  The names here are
 -- mostly based on parsing work by Doaitse Swierstra.
 --
--- For more details, see /Applicative Programming with Effects/,
--- by Conor McBride and Ross Paterson, online at
--- <http://www.soi.city.ac.uk/~ross/papers/Applicative.html>.
+-- For more details, see
+-- <http://www.soi.city.ac.uk/~ross/papers/Applicative.html Applicative Programming with Effects>,
+-- by Conor McBride and Ross Paterson.
 
 module Control.Applicative (
     -- * Applicative functors
@@ -59,6 +61,7 @@ import Text.ParserCombinators.ReadP (ReadP)
 import Text.ParserCombinators.ReadPrec (ReadPrec)
 
 import GHC.Conc (STM, retry, orElse)
+import GHC.Generics
 
 infixl 3 <|>
 infixl 4 <*>, <*, *>, <**>
@@ -73,34 +76,39 @@ infixl 4 <*>, <*, *>, <**>
 -- functions satisfying the following laws:
 --
 -- [/identity/]
+--
 --      @'pure' 'id' '<*>' v = v@
 --
 -- [/composition/]
+--
 --      @'pure' (.) '<*>' u '<*>' v '<*>' w = u '<*>' (v '<*>' w)@
 --
 -- [/homomorphism/]
+--
 --      @'pure' f '<*>' 'pure' x = 'pure' (f x)@
 --
 -- [/interchange/]
+--
 --      @u '<*>' 'pure' y = 'pure' ('$' y) '<*>' u@
 --
 -- The other methods have the following default definitions, which may
 -- be overridden with equivalent specialized implementations:
 --
--- @
---      u '*>' v = 'pure' ('const' 'id') '<*>' u '<*>' v
---      u '<*' v = 'pure' 'const' '<*>' u '<*>' v
--- @
+--   * @u '*>' v = 'pure' ('const' 'id') '<*>' u '<*>' v@
+--
+--   * @u '<*' v = 'pure' 'const' '<*>' u '<*>' v@
 --
 -- As a consequence of these laws, the 'Functor' instance for @f@ will satisfy
 --
--- @
---      'fmap' f x = 'pure' f '<*>' x
--- @
+--   * @'fmap' f x = 'pure' f '<*>' x@
 --
--- If @f@ is also a 'Monad', it should satisfy @'pure' = 'return'@ and
--- @('<*>') = 'ap'@ (which implies that 'pure' and '<*>' satisfy the
--- applicative functor laws).
+-- If @f@ is also a 'Monad', it should satisfy
+--
+--   * @'pure' = 'return'@
+--
+--   * @('<*>') = 'ap'@
+--
+-- (which implies that 'pure' and '<*>' satisfy the applicative functor laws).
 
 class Functor f => Applicative f where
     -- | Lift a value.
@@ -226,6 +234,7 @@ instance ArrowPlus a => Alternative (ArrowMonad a) where
 -- new instances
 
 newtype Const a b = Const { getConst :: a }
+                  deriving (Generic, Generic1)
 
 instance Functor (Const m) where
     fmap _ (Const v) = Const v
@@ -240,6 +249,7 @@ instance Monoid m => Applicative (Const m) where
     Const f <*> Const v = Const (f `mappend` v)
 
 newtype WrappedMonad m a = WrapMonad { unwrapMonad :: m a }
+                         deriving (Generic, Generic1)
 
 instance Monad m => Functor (WrappedMonad m) where
     fmap f (WrapMonad v) = WrapMonad (liftM f v)
@@ -258,6 +268,7 @@ instance MonadPlus m => Alternative (WrappedMonad m) where
     WrapMonad u <|> WrapMonad v = WrapMonad (u `mplus` v)
 
 newtype WrappedArrow a b c = WrapArrow { unwrapArrow :: a b c }
+                           deriving (Generic, Generic1)
 
 instance Arrow a => Functor (WrappedArrow a b) where
     fmap f (WrapArrow a) = WrapArrow (a >>> arr f)
@@ -274,7 +285,8 @@ instance (ArrowZero a, ArrowPlus a) => Alternative (WrappedArrow a b) where
 --
 -- @f '<$>' 'ZipList' xs1 '<*>' ... '<*>' 'ZipList' xsn = 'ZipList' (zipWithn f xs1 ... xsn)@
 --
-newtype ZipList a = ZipList { getZipList :: [a] } deriving (Show, Eq, Ord, Read)
+newtype ZipList a = ZipList { getZipList :: [a] }
+                  deriving (Show, Eq, Ord, Read, Generic, Generic1)
 
 instance Functor ZipList where
     fmap f (ZipList xs) = ZipList (map f xs)

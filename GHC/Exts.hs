@@ -46,7 +46,11 @@ module GHC.Exts
         lazy, inline,
 
         -- * Safe coercions
-        GHC.Prim.coerce, GHC.Prim.Coercible,
+        --
+        -- | These are available from the /Trustworthy/ module "Data.Coerce" as well
+        --
+        -- /Since: 4.7.0.0/
+        Data.Coerce.coerce, Data.Coerce.Coercible,
 
         -- * Transform comprehensions
         Down(..), groupWith, sortWith, the,
@@ -70,12 +74,12 @@ module GHC.Exts
 import Prelude
 
 import GHC.Prim hiding (coerce, Coercible)
-import qualified GHC.Prim
-import GHC.Base hiding (coerce, Coercible)
+import GHC.Base hiding (coerce, Coercible) -- implicitly comes from GHC.Prim
 import GHC.Word
 import GHC.Int
 import GHC.Ptr
 import GHC.Stack
+import qualified Data.Coerce
 import Data.String
 import Data.List
 import Data.Data

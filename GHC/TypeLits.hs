@@ -29,12 +29,13 @@ module GHC.TypeLits
   , sameNat, sameSymbol
 
 
-    -- * Functions on type nats
+    -- * Functions on type literals
   , type (<=), type (<=?), type (+), type (*), type (^), type (-)
+  , CmpNat, CmpSymbol
 
   ) where
 
-import GHC.Base(Eq(..), Ord(..), Bool(True,False), otherwise)
+import GHC.Base(Eq(..), Ord(..), Bool(True,False), Ordering(..), otherwise)
 import GHC.Num(Integer)
 import GHC.Base(String)
 import GHC.Show(Show(..))
@@ -152,7 +153,20 @@ infixr 8 ^
 -- | Comparison of type-level naturals, as a constraint.
 type x <= y = (x <=? y) ~ True
 
+-- | Comparison of type-level symbols, as a function.
+--
+-- /Since: 4.7.0.0/
+type family CmpSymbol (m :: Symbol) (n :: Symbol) :: Ordering
+
 -- | Comparison of type-level naturals, as a function.
+--
+-- /Since: 4.7.0.0/
+type family CmpNat    (m :: Nat)    (n :: Nat)    :: Ordering
+
+{- | Comparison of type-level naturals, as a function.
+NOTE: The functionality for this function should be subsumed
+by 'CmpNat', so this might go away in the future.
+Please let us know, if you encounter discrepancies between the two. -}
 type family (m :: Nat) <=? (n :: Nat) :: Bool
 
 -- | Addition of type-level naturals.
