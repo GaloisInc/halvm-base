@@ -92,7 +92,7 @@ ioManagerCapabilitiesChanged = return ()
 -- that has been used with 'threadWaitRead', use 'closeFdWith'.
 threadWaitRead :: Fd -> IO ()
 threadWaitRead fd
-#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
+#if !defined(mingw32_HOST_OS)
   | threaded  = Event.threadWaitRead fd
 #endif
   | otherwise = IO $ \s ->
@@ -108,7 +108,7 @@ threadWaitRead fd
 -- that has been used with 'threadWaitWrite', use 'closeFdWith'.
 threadWaitWrite :: Fd -> IO ()
 threadWaitWrite fd
-#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
+#if !defined(mingw32_HOST_OS)
   | threaded  = Event.threadWaitWrite fd
 #endif
   | otherwise = IO $ \s ->
@@ -122,7 +122,7 @@ threadWaitWrite fd
 -- in the file descriptor.
 threadWaitReadSTM :: Fd -> IO (Sync.STM (), IO ())
 threadWaitReadSTM fd 
-#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
+#if !defined(mingw32_HOST_OS)
   | threaded  = Event.threadWaitReadSTM fd
 #endif
   | otherwise = do
@@ -141,7 +141,7 @@ threadWaitReadSTM fd
 -- in the file descriptor.
 threadWaitWriteSTM :: Fd -> IO (Sync.STM (), IO ())
 threadWaitWriteSTM fd 
-#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
+#if !defined(mingw32_HOST_OS)
   | threaded  = Event.threadWaitWriteSTM fd
 #endif
   | otherwise = do
@@ -166,7 +166,7 @@ closeFdWith :: (Fd -> IO ()) -- ^ Low-level action that performs the real close.
             -> Fd            -- ^ File descriptor to close.
             -> IO ()
 closeFdWith close fd
-#if !defined(mingw32_HOST_OS) && !defined(HaLVM_TARGET_OS)
+#if !defined(mingw32_HOST_OS)
   | threaded  = Event.closeFdWith close fd
 #endif
   | otherwise = close fd
