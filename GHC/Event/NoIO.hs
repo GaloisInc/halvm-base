@@ -1,5 +1,6 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE Trustworthy #-}
 module GHC.Event.NoIO(
          ensureIOManagerIsRunning
@@ -15,22 +16,41 @@ module GHC.Event.NoIO(
  where
 
 import Data.Maybe(Maybe(..))
+import Foreign.Marshal.Alloc
+import Foreign.Storable(peek)
 import Foreign.StablePtr(StablePtr, newStablePtr, deRefStablePtr, freeStablePtr)
 import GHC.Base
-import GHC.Conc.Sync(TVar, atomically, newTVar, writeTVar, forkIO, STM)
+import GHC.Conc.Sync(TVar, atomically, newTVar, writeTVar, forkIO, STM, yield)
 import GHC.MVar(MVar, newEmptyMVar, takeMVar, putMVar)
 import Foreign.C.String
 import Foreign.Ptr
 import System.Posix.Types(Fd)
 
 ensureIOManagerIsRunning :: IO ()
-ensureIOManagerIsRunning  = forkIO runWaiters >> return ()
+ensureIOManagerIsRunning =
+  do ptr <- malloc
+     _   <- forkIO (ioManager ptr)
+     return ()
+
+ioManager :: Ptr (StablePtr (IO ())) -> IO ()
+ioManager ptr =
+  forever $ do waitTime <- waitForWaiter ptr
+               if waitTime == 0
+                  then runWaiter
+                  else do yield
+                          waitTime <- waitForWaiter ptr
+                          if waitTime == 0
+                             then runWaiter
+                             else sleepUntilWaiter waitTime
  where
-  runWaiters = do
-    next <- waitForWaiter
-    action <- deRefStablePtr next
-    _ <- forkIO action
-    runWaiters
+  runWaiter =
+    do sp <- peek ptr
+       action <- deRefStablePtr sp
+       action
+
+forever     :: (Monad m) => m a -> m b
+{-# INLINE forever #-}
+forever a   = let a' = a >> a' in a'
 
 ioManagerCapabilitiesChanged :: IO ()
 ioManagerCapabilitiesChanged  = return ()
@@ -38,24 +58,16 @@ ioManagerCapabilitiesChanged  = return ()
 -- The following two functions are obvious candidates for mdo/fixIO,
 -- but importing either causes circular dependency problems
 threadDelay :: Int -> IO ()
-threadDelay usecs = do
+threadDelay usecs = mdo
   wait <- newEmptyMVar
-  spMV <- newEmptyMVar
-  sp <- newStablePtr $ do
-          putMVar wait ()
-          takeMVar spMV >>= freeStablePtr
-  putMVar spMV sp
+  sp <- newStablePtr (putMVar wait () >> freeStablePtr sp)
   registerWaiter usecs sp
   takeMVar wait
 
 registerDelay :: Int -> IO (TVar Bool)
-registerDelay usecs = do
+registerDelay usecs = mdo
   t <- atomically $ newTVar False
-  spMV <- newEmptyMVar
-  sp <- newStablePtr $ do
-          atomically $ writeTVar t True
-          takeMVar spMV >>= freeStablePtr
-  putMVar spMV sp
+  sp <- newStablePtr (do atomically (writeTVar t True) >> freeStablePtr sp)
   registerWaiter usecs sp
   return t
 
@@ -77,5 +89,8 @@ closeFdWith close fd = close fd
 foreign import ccall unsafe "registerWaiter"
   registerWaiter :: Int -> StablePtr (IO ()) -> IO ()
 
-foreign import ccall safe "waitForWaiter"
-  waitForWaiter :: IO (StablePtr (IO ()))
+foreign import ccall unsafe "waitForWaiter"
+  waitForWaiter :: Ptr (StablePtr (IO ())) -> IO Word
+
+foreign import ccall safe "sleepUntilWaiter"
+  sleepUntilWaiter :: Word -> IO ()
