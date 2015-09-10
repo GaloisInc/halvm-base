@@ -44,9 +44,10 @@ ioManager ptr =
                              else sleepUntilWaiter waitTime
  where
   runWaiter =
-    do sp <- peek ptr
+    do sp     <- peek ptr
        action <- deRefStablePtr sp
-       action
+       _      <- forkIO action
+       return ()
 
 forever     :: (Monad m) => m a -> m b
 {-# INLINE forever #-}
@@ -58,18 +59,26 @@ ioManagerCapabilitiesChanged  = return ()
 -- The following two functions are obvious candidates for mdo/fixIO,
 -- but importing either causes circular dependency problems
 threadDelay :: Int -> IO ()
-threadDelay usecs = mdo
-  wait <- newEmptyMVar
-  sp <- newStablePtr (putMVar wait () >> freeStablePtr sp)
-  registerWaiter usecs sp
-  takeMVar wait
+threadDelay usecs =
+  do wait <- newEmptyMVar
+     spMV <- newEmptyMVar
+     sp   <- newStablePtr (do putMVar wait ()
+                              sp' <- takeMVar spMV
+                              freeStablePtr sp')
+     putMVar spMV sp
+     registerWaiter usecs sp
+     takeMVar wait
 
 registerDelay :: Int -> IO (TVar Bool)
-registerDelay usecs = mdo
-  t <- atomically $ newTVar False
-  sp <- newStablePtr (do atomically (writeTVar t True) >> freeStablePtr sp)
-  registerWaiter usecs sp
-  return t
+registerDelay usecs = 
+  do t    <- atomically $ newTVar False
+     spMV <- newEmptyMVar
+     sp   <- newStablePtr (do atomically (writeTVar t True) 
+                              sp' <- takeMVar spMV
+                              freeStablePtr sp')
+     putMVar spMV sp
+     registerWaiter usecs sp
+     return t
 
 threadWaitRead :: Fd -> IO ()
 threadWaitRead _ = return ()
